@@ -85,6 +85,55 @@ public class WebsocketTest {
         
     }
     
+    @Test
+    public void TestConnectionsMultiThreaded() throws InterruptedException {
+        
+        LOGGER.info("Starting multi thread test for {} threads", MAX_CONNECTIONS);
+        
+        for (int count=1; count < MAX_CONNECTIONS; count++) {
+        	
+        	Thread thread = new Thread() {
+            
+        		public void run() {           
+	                
+	                List<Transport> transports = new ArrayList<>(2);
+	                transports.add(new WebSocketTransport(new StandardWebSocketClient()));
+	                transports.add(new RestTemplateXhrTransport());
+	                
+	                WebSocketClient transport = new SockJsClient(transports);
+	                WebSocketStompClient stompClient = new WebSocketStompClient(transport);
+	                stompClient.setTaskScheduler(new DefaultManagedTaskScheduler());
+	                
+	                // Below add explicit call to get new auth or hijack one at start of method
+	                WebSocketHttpHeaders headers = new WebSocketHttpHeaders();
+	                try {
+	                	headers.add("Cookie", getCookies());
+	                } catch (Exception e) {
+                        LOGGER.info("ERROR ***");
+                        //e.printStackTrace();
+                    }
+	                
+	                long [] heartBeat = {10000,10000};
+	                stompClient.setDefaultHeartbeat(heartBeat);
+	                
+	                StompSessionHandler handler = new TestStompSessionHandler() ;
+	                stompClient.connect(WEBSOCKET_ENDPOINT_URL, headers, handler);
+            
+		         } 
+        	};
+            
+             
+	        LOGGER.info("About to start thread  {}", count);
+	       
+	        thread.start();        
+        
+        } // Thread loop
+        
+        LOGGER.info("Sleep in thread 30 secs");
+        Thread.sleep(300000);
+        
+    }
+    
     /**
      * Get the associated jsessionid for the stomp client connection 
      */
